@@ -19,6 +19,8 @@ DCEtool()
 After introducing the inputs in the 'Parameters' tab, the pilot design can be downloaded in the 'Design matrix' tab using the 'Download' button. 
 
 If the survey functionality of the app is used, each time a new response is recorded, the user can estimate a conditional logit and download the coded results in the 'Results' tab.
+
+
 }
 
 \examples{

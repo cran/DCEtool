@@ -65,6 +65,7 @@ requireNamespace('stats')
 #' @importFrom shiny renderPrint
 #' @importFrom DT renderDataTable
 
+
 #### Initialisation ####
 # Data frame for attributes and levels #
 data <- data.frame(
@@ -118,6 +119,7 @@ ui <- fluidPage(theme=shinytheme("flatly"),
                           hr(),
                           HTML("<p><b>Changelog</b><p>"),
                           HTML("<ul>
+                                <li>07/05/2021 (V 0.0.2): Now priors can be specified</li>
                                 <li>16/04/2021 (V 0.0.1): Release</li>
                                 </ul>")
                           ),
@@ -136,6 +138,9 @@ ui <- fluidPage(theme=shinytheme("flatly"),
                                numericInput("a", "No. of alternatives per choice set", ""),
                                numericInput("s", "No. of choice sets per respondent", ""),
                                checkboxInput("nula", "Opt-out alternative", FALSE),
+                               textInput('userpriors', 'Prior coefficients*',""),
+                               t("*If no information is available, enter a string of zeros separated by commas. The number of zeros will be the number of levels minus the number of attributes plus one only if there is an opt-out option. For the example data it is '0,0,0,0,0,0,0' without opt-out option or '0,0,0,0,0,0,0,0' with opt-out option"),
+                               hr(),
                                actionButton(inputId = "gen.button", label = "Save inputs", icon = icon("window-restore")),
                                hr(),
                                actionButton(inputId = "example.button", label = "Load example data", icon = icon("upload"))
@@ -214,6 +219,7 @@ ui <- fluidPage(theme=shinytheme("flatly"),
 
 server = function(input, output) {
 
+  
   # Storage of changing variables #
   values <- reactiveValues()
   values$df <- data
@@ -261,11 +267,14 @@ server = function(input, output) {
     values$niveles <- unlist(c(values$df[2]))
     values$atnames <- unlist(c(values$df[1]))
     values$levnames <- unlist(c(values$df[3]))
+    values$userpriors <- input$userpriors
+    values$userpriors <- unlist(strsplit(values$userpriors, split=","))
+    values$userpriors <- as.numeric(values$userpriors)
   })
 
 
-  # DCE creator function (when priors are = 0) #
-  creator <- function (niveles, nula, a, s) {
+  # DCE creator function  #
+  creator <- function (niveles, nula, a, s, priors) {
     x <- 0
     codif <- c()
     while (x<length(niveles)){
@@ -278,12 +287,6 @@ server = function(input, output) {
       pr <- (l-k+1)
     } else {
       pr <- (l-k)
-    }
-    y <- 0
-    priors <- c()
-    while (y<pr){
-      priors <- append(priors,0)
-      y <- y+1
     }
     I <- diag(length(priors))
     sim <- MASS::mvrnorm(n=100, mu=priors, Sigma=I)
@@ -321,7 +324,8 @@ server = function(input, output) {
     nula <- values$nula
     a <- values$a
     s <- values$s
-    dis <- creator(niveles, nula, a, s)
+    priors <- values$userpriors
+    dis <- creator(niveles, nula, a, s, priors)
     values$alt.cte <- dis[[3]]
     values$codif <- dis[[4]]
     final <- dis[[1]]$design
