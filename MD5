@@ -1,10 +1,10 @@
-44e95049d2ed25ab9ddd6e4db216d224 *DESCRIPTION
-e034239bcc2fe6c7fcee09190e157e16 *NAMESPACE
-9ae4abd6d8c34ad14b7da655b55a3e16 *NEWS.md
-c140bd234f438347eb164e7ba70dfe56 *R/app.r
+5678da7171ca172feedeeacd2027d9a6 *DESCRIPTION
+2ce488617d3fa63475543c430ed419e3 *NAMESPACE
+f717c6bbfdee52b33851b61b7d3d65e0 *NEWS.md
+32273fc8ae935f762c6a4ee638ad15c1 *R/app.r
 b5e8d931d95fac0d664e0feb558d8e75 *R/helpfiles/upload_help.md
 d843d405183447b00c7d305286076226 *README.md
-4b71e08d1922e7b01f50fbf5a1282219 *build/partial.rdb
+3c63c7b8e4ad6990bafa419579cf5b7f *build/partial.rdb
 60fd9d1c8dd74444bcbaa7857b07d746 *build/vignette.rds
 f121d847e32e4d31d0b9a0ddd9629beb *inst/doc/DCEtool.R
 5f3e519e0d83ef41671ef8f7de5feace *inst/doc/DCEtool.Rmd

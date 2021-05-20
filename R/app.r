@@ -15,6 +15,11 @@ requireNamespace('writexl')
 requireNamespace('shinyjs')
 requireNamespace('MASS')
 requireNamespace('stats')
+requireNamespace('shinycssloaders')
+requireNamespace('shinyglide')
+requireNamespace('htmltools')
+requireNamespace('stringr')
+
 
 
 # Imports
@@ -42,6 +47,8 @@ requireNamespace('stats')
 #' @importFrom shiny hr
 #' @importFrom shiny h4
 #' @importFrom shiny tableOutput
+#' @importFrom shiny selectInput
+#' @importFrom shiny conditionalPanel
 #' @importFrom shinyjs useShinyjs
 #' @importFrom shiny verbatimTextOutput
 #' @importFrom shiny reactiveValues
@@ -64,6 +71,13 @@ requireNamespace('stats')
 #' @importFrom shiny shinyApp
 #' @importFrom shiny renderPrint
 #' @importFrom DT renderDataTable
+#' @importFrom shinycssloaders withSpinner
+#' @importFrom shinyglide glide
+#' @importFrom shinyglide screen
+#' @importFrom shinyglide screenOutput
+#' @importFrom stringr str_replace_all
+#' @importFrom shiny markdown
+
 
 
 #### Initialisation ####
@@ -85,10 +99,146 @@ sn <- 0
 resp  <- vector("character")
 sdata <- vector(mode = "list")
 fulldes <- matrix()
+sncum <- 0
 
 #### User interface ####
 ui <- fluidPage(theme=shinytheme("flatly"),
       navbarPage("DCE tool",
+                  tabPanel("Parameters", #Parameters input
+                           sidebarLayout(
+                             sidebarPanel(
+                               h4("Attributes and levels"),
+                               textInput("name", "Name of the attribute", ""),
+                               numericInput("lev", "Number of levels", ""),
+                               textInput("label", "Levels' name (in order and separated by commas)", ""),
+                               actionButton(inputId = "add.button", label = "Add", icon = icon("plus")),
+                               actionButton(inputId = "delete.button", label = "Delete", icon = icon("minus")),
+                               hr(),
+                               actionButton(inputId = "example.button", label = "Load example data", icon = icon("upload")),
+                               hr(),
+                               h4("Other parameters"),
+                               numericInput("a", "No. of alternatives per choice set", ""),
+                               numericInput("s", "No. of choice sets per respondent", ""),
+                               checkboxInput("nula", "Opt-out alternative", FALSE),
+                               selectInput("priorstype", "Type of priors", c("Zero (pilot design)"="zero", "Personalized priors"="personalized")),
+                               conditionalPanel(
+                                   condition = "input.priorstype == 'personalized'",
+                                   textInput('userpriors', 'Prior coefficients*',""),
+                                   t("*Enter the prior coefficients separated by commas. The number of coefficients must be equal to: l-k (+1 if an opt-out alternative is included). l: total number of levels, k: total number of attributes. ")),
+                               hr(),
+                               actionButton(inputId = "gen.button", label = "Save inputs", icon = icon("window-restore"))
+                             ),
+                             mainPanel(
+                               dataTableOutput('table')
+                             )
+                           )
+                        ),
+
+                  tabPanel("Design matrix", #Design output
+                           sidebarLayout(
+                             sidebarPanel(
+                               downloadButton("downloadData", "Download"),
+                               hr(),
+                               actionButton("decode", "Decode the design matrix")
+                             ),
+                             mainPanel(
+                               shinycssloaders::withSpinner(dataTableOutput('table2'), type = 6),
+                               verbatimTextOutput('decoded')
+                             )
+                           )
+                  ),
+                 
+                 tabPanel("Survey wizard", #instructions
+                          glide(
+                            screen(
+                              p("In this section you can set up a static survey.
+                                You can use this static survey to record responses
+                                to a discrete choice experiment on a single computer.
+                                This means that all respondents will have to answer
+                                the survey on this computer."),
+                              hr(),
+                              HTML("<p>Throughout the wizard you will be offered several configuration options.
+                                You can change the name of the alternatives, add an introductory text, 
+                                add a final text, and decide whether or not to 
+                                use the serial method for calculating the priors 
+                                of Bliemer & Rose (2010) <a href='https://doi.org/10.1108/9781849507738-006'>https://doi.org/10.1108/9781849507738-006</a></p>")
+                            ),
+                            
+                            screen(
+                              p("Enter the name of the alternatives separated by commas. For example, for choice sets with
+                                two alternatives, you could type 'Alternative 1, Alternative 2' (with no quotes)."),
+                              textOutput("alternatives"),
+                              hr(),
+                              textInput("altnames", "Alternative' names (in order and separated by commas)", "", width = '80%')
+                            ),
+                            screen(
+                            HTML("<p>Please write an introductory text for the survey. Use Markdown language, see guide <a href='https://www.markdownguide.org/cheat-sheet/'>here</a></p>"),
+                            tags$textarea(
+                              id = "intro.text", 
+                              rows = "8",
+                              cols = "100",
+                              "### Survey title \n \n This is a markdown paragraph. \n \n  The following is an unordered list \n \n * a bullet \n \n * another \n \n[Links](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a) work;\n \n so does *emphasis*.\n \n To see more of what's possible, check out [commonmark.org/help](https://commonmark.org/help)." 
+                            ),
+                            p('Preview:'),
+                            column(12, uiOutput('markdown'))
+                            ),
+                            screen(
+                              HTML("<p>Please write an introductory end for the survey. Use Markdown language, see guide <a href='https://www.markdownguide.org/cheat-sheet/'>here</a></p>"),
+                              tags$textarea(
+                                id = "end.text", 
+                                rows = "8",
+                                cols = "100",
+                                "End of the survey. Thank you. "
+                              ),
+                              p('Preview:'),
+                              column(12, uiOutput('markdownend'))
+                            ),
+                            screen(
+                              HTML("<p>Use Bliemer and Rose serial approach <a href='https://doi.org/10.1108/9781849507738-006'>https://doi.org/10.1108/9781849507738-006</a></p>"),
+                              checkboxInput("serial", "Use serial approach", FALSE)),
+                            screenOutput("check_screen"),
+                            screen(
+                              p("Push the button and move to the 'Survey' tab."),
+                              actionButton(inputId = "survey.button", label = " Create the survey", icon = icon("plus-circle"))
+                            )
+                          )
+                 ),
+
+                  tabPanel("Survey", #Survey phase
+                           mainPanel(
+                             tags$style(type="text/css", #Hiding some annoying errors
+                                        ".shiny-output-error { visibility: hidden; }",
+                                        ".shiny-output-error:before { visibility: hidden; }"
+                             ),
+                             column(12, align = 'center', textOutput("set.nr")),
+                             column(12, align = 'center', tableOutput("choice.set")),
+                             column(12, align = 'center', uiOutput('buttons')),
+                             column(12, uiOutput('intro.text')),
+                             column(12, uiOutput('end')),
+                             column(12, align = "center", actionButton("OK", "OK")),
+                             useShinyjs(),
+                             column(12, align = "center", actionButton("nextbutton", "Next respondent")),
+                             hr()
+
+                           )
+                  ),
+
+                  tabPanel("Results", #Results page
+                      sidebarLayout(
+                        sidebarPanel(
+                          downloadButton("downloadResults", "Download"),
+                          hr(),
+                          checkboxInput("linearpricecheck", "Price as linear variable (not available)", FALSE),
+                          conditionalPanel(
+                            condition = "input.linearpricecheck == 'TRUE'",
+                            actionButton(inputId = "linearprice", label = "Price as linear", icon = icon('equals')),
+                        )),
+                        mainPanel(
+                          dataTableOutput('results'),
+                          verbatimTextOutput('model')
+                        )
+                      )
+                  ),
                  tabPanel("Instructions", #Instructions
                           fluidRow(column(width=2),
                                    column(
@@ -119,103 +269,15 @@ ui <- fluidPage(theme=shinytheme("flatly"),
                           hr(),
                           HTML("<p><b>Changelog</b><p>"),
                           HTML("<ul>
-                                <li>07/05/2021 (V 0.0.2): Now priors can be specified</li>
+                                <li>20/05/2021 (V 0.2.2): Priors selection improved, variable names added to the tables and model, survey wizard, serial designs improved</li>
+                                <li>07/05/2021 (V 0.2.1): Now priors can be specified</li>
                                 <li>16/04/2021 (V 0.0.1): Release</li>
                                 </ul>")
-                          ),
-
-                  tabPanel("Parameters", #Parameters input
-                           sidebarLayout(
-                             sidebarPanel(
-                               h4("Attributes and levels"),
-                               textInput("name", "Name of the attribute", ""),
-                               numericInput("lev", "Number of levels", ""),
-                               textInput("label", "Levels' name (in order and separated by commas)", ""),
-                               actionButton(inputId = "add.button", label = "Add", icon = icon("plus")),
-                               actionButton(inputId = "delete.button", label = "Delete", icon = icon("minus")),
-                               hr(),
-                               h4("Other parameters"),
-                               numericInput("a", "No. of alternatives per choice set", ""),
-                               numericInput("s", "No. of choice sets per respondent", ""),
-                               checkboxInput("nula", "Opt-out alternative", FALSE),
-                               textInput('userpriors', 'Prior coefficients*',""),
-                               t("*If no information is available, enter a string of zeros separated by commas. The number of zeros will be the number of levels minus the number of attributes plus one only if there is an opt-out option. For the example data it is '0,0,0,0,0,0,0' without opt-out option or '0,0,0,0,0,0,0,0' with opt-out option"),
-                               hr(),
-                               actionButton(inputId = "gen.button", label = "Save inputs", icon = icon("window-restore")),
-                               hr(),
-                               actionButton(inputId = "example.button", label = "Load example data", icon = icon("upload"))
-                             ),
-                             mainPanel(
-                               dataTableOutput('table')
-                             )
-                           )
-                        ),
-
-                  tabPanel("Design matrix", #Design output
-                           sidebarLayout(
-                             sidebarPanel(
-                               h4("Design matrix"),
-                               actionButton(inputId = "go.button", label = "Print the design matrix", icon = icon("calculator")),
-                               hr(),
-                               downloadButton("downloadData", "Download"),
-                               hr(),
-                               h4("Survey settings"),
-                               textInput("altnames", "Alternative' names (in order and separated by commas)", ""),
-                               hr(),
-                               textAreaInput("intro", "Intro text", "Intro", height = "200px"),
-                               hr(),
-                               textAreaInput("end", "End text", "End", height = "200px"),
-                               hr(),
-                               actionButton(inputId = "survey.button", label = " Create the survey", icon = icon("plus-circle"))
-                             ),
-                             mainPanel(
-                              
-                              dataTableOutput('table2')
-                             )
-                           )
-                  ),
-
-                  tabPanel("Survey", #Survey phase
-                           mainPanel(
-                             tags$style(type="text/css", #Hiding some annoying errors
-                                        ".shiny-output-error { visibility: hidden; }",
-                                        ".shiny-output-error:before { visibility: hidden; }"
-                             ),
-                             column(12, align = 'center', textOutput("set.nr")),
-                             column(12, align = 'center', tableOutput("choice.set")),
-                             column(12, align = 'center', uiOutput('buttons')),
-                             column(12, align = 'center', textOutput('intro')),
-                             column(12, align = "center", actionButton("OK", "OK")),
-                             hr(),
-                             hr(),
-                             column(12, align = 'center', textOutput('end')),
-                             hr(),
-                             hr(),
-                             useShinyjs(),
-                             column(12, align = "center", actionButton("nextseq", "Next sequential design")),
-                             hr(),
-                             hr(),
-                             useShinyjs(),
-                             verbatimTextOutput("priors")
-
-                           )
-                  ),
-
-                  tabPanel("Results", #Results page
-                      sidebarLayout(
-                        sidebarPanel(
-                          downloadButton("downloadResults", "Download"),
-                          hr(),
-                          actionButton(inputId = "estimate", label = "Estimate a clogit", icon = icon('equals'))
-                        ),
-                        mainPanel(
-                          dataTableOutput('results'),
-                          verbatimTextOutput('model')
-                        )
-                      )
-                  )
-    ) #End of navpage
-    ) #End of UI
+                 )
+                 
+                 
+    ) #end of navpage
+    ) #end of ui
 
 server = function(input, output) {
 
@@ -223,10 +285,10 @@ server = function(input, output) {
   # Storage of changing variables #
   values <- reactiveValues()
   values$df <- data
+  
 
   # Table input for attributes and levels #
   observeEvent(input$add.button,{
-    cat("add Entry\n")
     print(input$name)
     print(input$lev)
     print(input$label)
@@ -240,7 +302,6 @@ server = function(input, output) {
 
   # Delete last input in the table #
   observeEvent(input$delete.button,{
-    cat("deleteEntry\n")
       values$df <- head(values$df,-1)
     }
   )
@@ -256,12 +317,14 @@ server = function(input, output) {
   output$table = renderDataTable({
     tablex=as.data.frame(values$df)
     colnames(tablex) <- c("Attribute", "No. of levels", "Levels' name")
+    values$tablex <- tablex
     tablex
   })
 
   # Save inputs in changing variables #
   observeEvent(input$gen.button,{
     values$a <- input$a
+    values$atext <- input$a
     values$s <- input$s
     values$nula <- input$nula
     values$niveles <- unlist(c(values$df[2]))
@@ -272,7 +335,34 @@ server = function(input, output) {
     values$userpriors <- as.numeric(values$userpriors)
   })
 
+  output$alternatives <- renderPrint({
+     if (values$nula==FALSE){
+    cat("Since you are using ",values$atext, " alternatives, you need ", values$atext, " strings separated by ", values$atext-1, "comma(s).")
+     } else {
+       cat("Since you are using ",values$atext+1, " alternatives, you need ", values$atext+1, " strings separated by ", values$atext, "comma(s).")
+     }
+  })
+  
+  # Markdown intro text #
+  output$markdown <- renderUI({
+    markdown(input$intro.text, .noWS = TRUE)
+  })
+  
+  # Markdown end text #
+  output$markdownend <- renderUI({
+    markdown(input$end.text, .noWS = TRUE)
+  })
+  
+  output$check_screen <- renderUI({
+    if(!input$serial) return(NULL)
+    numericInput("serialno", "Start serial strategy X responses:", "20")
+  })
+  
+  observeEvent(input$serialno,{
+    values$serialno <- input$serialno
+  })
 
+  
   # DCE creator function  #
   creator <- function (niveles, nula, a, s, priors) {
     x <- 0
@@ -318,14 +408,32 @@ server = function(input, output) {
     }
   } #End of the creator
 
-  # Creator function execution #
-  observeEvent(input$go.button,{
+  output$table2 <- renderTable({
     niveles <- values$niveles
     nula <- values$nula
     a <- values$a
     s <- values$s
-    priors <- values$userpriors
+    up <- values$userpriors
+    if(!exists("up")){
+      priors <- values$userpriors
+    } else {
+      # zero priors
+      l <- sum(niveles)
+      k <- length(niveles)
+      if (nula==TRUE){
+        pr <- (l-k+1)
+      } else {
+        pr <- (l-k)
+      }
+      y <- 0
+      priors <- c()
+      while (y<pr){
+        priors <- append(priors,0)
+        y <- y+1
+      }
+    }
     dis <- creator(niveles, nula, a, s, priors)
+    values$dis <- dis
     values$alt.cte <- dis[[3]]
     values$codif <- dis[[4]]
     final <- dis[[1]]$design
@@ -334,11 +442,87 @@ server = function(input, output) {
       a <- a+1
       values$a <- a
     }
+    
     output$table2 = renderDataTable({
+      input$go.button
+      tablex <- values$tablex
+      d <- nrow(tablex)
+      i <- 1
+      titles <- c()
+      d <- nrow(tablex)
+      i <- 1
+      titles <- c()
+      while(i<d+1){
+        current <- tablex[3][i,]
+        current <- unlist(strsplit(current, ","))
+        current <- current[2:length(current)]
+        titles <- append(titles, current)
+        i <- i+1
+      }
+      if(nula==TRUE){
+        titles <- append("opt-out",titles)
+      }
+      titles <- gsub(" ", "-", titles)
+      colnames(final) <- titles
+      values$final1 <- final
       final
     })
+    
     values$downloadata <- as.data.frame(values$des) #formatting the data to be downloaded
     values$downloadata <- cbind(rownames(values$des),values$des)
+  })
+  
+  observeEvent(input$decode,{
+    tablex <- values$tablex
+    n <- nrow(tablex)
+    c <- 0
+    nivn <- tablex[,3]
+    lvls <- list()
+    while (c<n){
+      c <- c + 1
+      z <- strsplit(nivn[c], ",")[[1]]
+      lvls <- append(lvls,list(z))
+    }
+    dis <- values$dis
+    nula <- values$nula
+    a <- values$a
+    cte <- values$alt.cte
+    cod <- values$codif
+    if (nula==TRUE){
+    decoded <- Decode(des = dis[[1]]$design, n.alts = a ,lvl.names = lvls, alt.cte = c(0,0,1), coding = cod, no.choice = 3)
+    } else {
+    decoded <- Decode(des = dis[[1]]$design, n.alts = a ,lvl.names = lvls, coding = cod)
+    }
+    colnames(decoded$design) <- tablex[,1]
+    values$decoded <- decoded$design
+  })
+  
+  output$decoded <-  renderPrint({
+    decoded <- values$decoded
+    design <- decoded
+    a <- values$a
+    x <- 1
+    z <- 1
+    y <- nrow(design)
+    while (x < y){
+      s <- x+a-1
+      current <- design[x:s,]
+      csname <- paste("Choice set", z)
+      current <- t(current)
+      b <- 1
+      altnames <- c()
+      while(b < (a+1)){
+        an <- paste("Alternative ", b)
+        altnames <- append(altnames, an)
+        b <- b+1
+      }
+      colnames(current)<-altnames
+      prcurr <- print(current)
+      assign(paste("cs",z,sep=""), current)
+      x <- x+a
+      z <- z+1
+    }
+    # values$decoded[1]
   })
 
   # Download button #
@@ -404,6 +588,9 @@ server = function(input, output) {
     rowcol <- Rcnames(n.sets = n.init, n.alts = n.alts, alt.cte = alt.cte, no.choice = FALSE)
     rownames(des) <- rowcol[[1]]
     fulldes <- des
+    if(sn==0){
+    shinyjs::hide("nextbutton")
+    }
   })
 
     # When the OK button is clicked #
@@ -417,11 +604,14 @@ server = function(input, output) {
       n.init <- nrow(des) / n.alts
       n.total <- values$s
       values$OK <- input$OK
-      if (sn > n.total){
-        sn <<- 0
+      values$sn <- sn
+      if (values$sn > n.total+1){
+      values$sn <- 0
+      } else {
+      values$sn <- sn
       }
       sn <<- sn + 1
-      values$sn <- sn
+      values$sn <- values$sn + 1
       n.total <- values$s
       choice.sets <- values$choice.sets
       bs <- seq(1, (nrow(des) - n.alts + 1), n.alts)
@@ -498,45 +688,57 @@ server = function(input, output) {
     values$n.init <- n.init
     alts <- unlist(values$altnames)
     buttons.text <- "Select your preferred option"
-    if (values$sn >= 0 && sn <= n.total) {
-      return(list(radioButtons("survey", buttons.text, alts , inline = TRUE, selected = "None")))
+    if (values$sn >= 1 && values$sn <= n.total) {
+      return(list(radioButtons("survey", buttons.text, alts , inline = TRUE, selected = "None", width = "100%")))
     }
     })
 
     # Set the choice set number #
     observeEvent(input$OK, {
+    cat(input$OK)
     n.total <- values$s
-    sn <- values$sn
     if (sn <= n.total) {
       output$set.nr <- renderText(paste(c("choice set:", sn, "/", n.total)))
+      shinyjs::hide("nextbutton")
     } else {
       output$set.nr <- renderText(NULL)
     }
     })
 
     # Intro text #
-    output$intro <- renderText(values$intro.text)
-    observeEvent(input$OK, {
-      output$intro <- renderText(NULL)
-    })
+    output$intro.text <- renderUI(markdown(input$intro.text, .noWS = TRUE))
+     observeEvent(input$OK, {
+       n.total <- values$s
+       if (sn!=0){
+       output$intro.text <- renderUI(NULL)
+       } 
+       if (sn > n.total+1){
+         sn <<- 0 
+         output$intro.text <- renderUI(markdown(input$intro.text, .noWS = TRUE))
+         if(!is.null(input$serial)){
+         }
+       }
+     })
 
     # End of the survey #
     observeEvent(input$OK, {
     n.total <- values$s
-    if (values$sn > n.total) { # Display end text
+    if (values$sn > n.total && values$sn!=n.total+2) { # Display end text
         values$alldes <- rbind(values$alldes, values$des)
-        shinyjs::show("nextseq")
-        output$end <- renderText(values$end.text)
+        output$end <- renderUI(markdown(input$end.text, .noWS = TRUE))
+        if(!is.null(input$serial)){
+         shinyjs::show("nextbutton")
+         shinyjs::hide("OK")
+        }
     } else {
-        output$end <- renderText(NULL)
-        shinyjs::hide("nextseq")
+        output$end <- renderUI(NULL)
+        shinyjs::hide("nextbutton")
+        shinyjs::show("OK")
     }
 
-    # Quit application #
-    if (input$OK > (n.total)) {
-    values$sn <- 0
-    }
     })
+    
+
 
     # Show the results #
     output$results = renderDataTable({
@@ -552,15 +754,41 @@ server = function(input, output) {
       vars <- colnames(vars)
       vars <- paste(vars, collapse ="+")
       values$vars <- vars
+    
+      tablex <- values$tablex
+      d <- nrow(tablex)
+      i <- 1
+      titles <- c()
+      while(i<d+1){
+        current <- tablex[3][i,]
+        current <- unlist(strsplit(current, ","))
+        current <- current[2:length(current)]
+        titles <- append(titles, current)
+        i <- i+1
+      }
+      if(values$nula==TRUE){
+        titles <- append("opt-out",titles)
+      }
+      titles <- str_replace_all(titles, "[^[:alnum:]]", " ")
+      titles <- append(titles, c("bin.responses", "gid", "alt", "pid"))
+      colnames(results) <- titles 
+      values$titles <- titles
       values$results <- results
     })
 
     # estimate the clogit #
     observeEvent(input$estimate, {
       results <- values$results
-      model <- clogit(as.formula(paste("bin.responses~",values$vars)),strata(gid),data=results)
+      titles <- values$titles
+      titles <- titles[1:(length(titles)-4)]
+      titles <- paste0('`',titles, '`')
+      titles <- paste(titles, collapse ="+")
+      model <- clogit(as.formula(paste("bin.responses~",titles)),strata(gid),data=results)
       values$model <- summary(model)
     })
+    
+
+    
 
     # display the results #
     output$model <- renderPrint({
@@ -575,88 +803,202 @@ server = function(input, output) {
     content = function(file) {
       write_xlsx(as.data.frame(values$results), path = file)
     })
-
-    # create the next sequential design #
-    observeEvent(input$nextseq,{
-      x <- nrow(values$alldes)/values$a
-      gid <- rep(1:x, each=values$a)
-      alt <- rep(c(1:values$n.alts), values$n.init)
-      results <- cbind(values$alldes,as.data.frame(values$surveyData[1]), as.data.frame(gid), as.data.frame(alt))
-      filas <- nrow(results)
-      pid <- rep(1:(filas/nrow(values$des)), each = nrow(values$des))
-      results <- cbind(results, pid)
-      results <- as.data.frame(results)
-      vars <- results[ , -((ncol(results) - 3):ncol(results))]
-      vars <- colnames(vars)
-      vars <- paste(vars, collapse ="+")
-      values$vars <- vars
-      values$results <- results
+    
+    
+    # responses counter #
+    observeEvent(input$OK,{
+    if (sn > values$s){
+      sncum <<- sncum+1
+    }
+      values$sncum <- sncum
+    })
+    
+    observeEvent(input$linearprice, {
+      tablex <- values$tablex
+      tablex <- as.vector(unlist(tablex[1]))
+    })
+    
+    output$pricevars = renderUI({
       results <- values$results
-      model <- clogit(as.formula(paste("bin.responses~",values$vars)),strata(gid),data=results)
-      coef <- summary(model)$coefficients[,1]
-      coef <- as.data.frame((cbind(coef, summary(model)$coefficients[,4])))
-      coef <- cbind(coef,ifelse(abs(coef[,2]) >= 1.96,1,0))
-      coef <- cbind(coef, coef[,1]*coef[,3])
-      priors <- coef[,4]
-      # new creator function adapted for the sequential design #
-      creator2 <- function (niveles, nula, a, s, priors) {
-        x <- 0
-        codif <- c()
-        while (x<length(niveles)){
-          codif <- append(codif, "D")
-          x <- x+1
-        }
-        l <- sum(niveles)
-        k <- length(niveles)
-        if (nula==TRUE){
-          pr <- (l-k+1)
-        } else {
-          pr <- (l-k)
-        }
-        y <- 0
-        I <- diag(length(priors))
-        sim <- MASS::mvrnorm(n=100, mu=priors, Sigma=I)
-        if (nula==TRUE){
-          a <- a
-          sim <- list(sim[,1:1], sim[, 2:(length(priors))])
-          t <- 0
-          u <- a-1
-          const <- c()
-          while(t<=u){
-            if (t<u){
-              const <- append(const,0)
-            } else {
-              const <- append(const,1)
-            }
-            t <- t+1
+      results <- as.data.frame(results)
+      final1 <- as.data.frame(values$final1)
+      selectInput('selectprice', 'Select price variables', names(final1), multiple = TRUE)
+    })
+    
+    
+    observeEvent(input$nextbutton, {
+
+      if(!is.null(values$serialno)){
+      if(values$serialno <= values$sncum){
+        
+        # importing parameters #
+        x <- nrow(values$alldes)/values$a
+        gid <- rep(1:x, each=values$a)
+        alt <- rep(c(1:values$n.alts), values$n.init)
+        results <- cbind(values$alldes,as.data.frame(values$surveyData[1]), as.data.frame(gid), as.data.frame(alt))
+        filas <- nrow(results)
+        pid <- rep(1:(filas/nrow(values$des)), each = nrow(values$des))
+        results <- cbind(results, pid)
+        results <- as.data.frame(results)
+        vars <- results[ , -((ncol(results) - 3):ncol(results))]
+        vars <- colnames(vars)
+        vars <- paste(vars, collapse ="+")
+        values$vars <- vars
+        values$results <- results
+        results <- values$results
+        model <- clogit(as.formula(paste("bin.responses~",values$vars)),strata(gid),data=results)
+        coef <- summary(model)$coefficients[,1]
+        coef <- as.data.frame((cbind(coef, summary(model)$coefficients[,4])))
+        coef <- cbind(coef,ifelse(abs(coef[,2]) >= 1.96,1,0))
+        coef <- cbind(coef, coef[,1]*coef[,3])
+        priors <- coef[,4]
+        # end of importing parameters #
+        
+        # new creator function adapted for the sequential design #
+        creator2 <- function (niveles, nula, a, s, priors) {
+          x <- 0
+          codif <- c()
+          while (x<length(niveles)){
+            codif <- append(codif, "D")
+            x <- x+1
           }
-          dis <- CEA(lvls=niveles, coding=codif, n.alts=a, n.sets=s, alt.cte=const,
-                     par.draws=sim, no.choice=TRUE, best=TRUE)
-        }
-        if (nula==FALSE){
-          dis <- CEA(lvls=niveles, coding=codif, n.alts=a, n.sets=s,
-                     par.draws=sim, no.choice=FALSE, best=TRUE)
-        }
-        if (nula==TRUE){
-          return(list(dis, codif, const, codif))
-        } else {
-          return(list(dis, codif, NULL, codif))
-        }
-      } #end of the new creation function
-
-      niveles <- values$niveles
-      nula <- values$nula
-      a <- values$a
-      s <- values$s
-      ndes <- creator2(niveles, nula, a, s, priors)
-      ndes <- ndes[[1]]$design
-      values$des <- ndes
-      values$priors <- priors
+          l <- sum(niveles)
+          k <- length(niveles)
+          if (nula==TRUE){
+            pr <- (l-k+1)
+          } else {
+            pr <- (l-k)
+          }
+          y <- 0
+          I <- diag(length(priors))
+          sim <- MASS::mvrnorm(n=100, mu=priors, Sigma=I)
+          if (nula==TRUE){
+            a <- a
+            sim <- list(sim[,1:1], sim[, 2:(length(priors))])
+            t <- 0
+            u <- a-1
+            const <- c()
+            while(t<=u){
+              if (t<u){
+                const <- append(const,0)
+              } else {
+                const <- append(const,1)
+              }
+              t <- t+1
+            }
+            dis <- CEA(lvls=niveles, coding=codif, n.alts=a, n.sets=s, alt.cte=const,
+                       par.draws=sim, no.choice=TRUE, best=TRUE)
+          }
+          if (nula==FALSE){
+            dis <- CEA(lvls=niveles, coding=codif, n.alts=a, n.sets=s,
+                       par.draws=sim, no.choice=FALSE, best=TRUE)
+          }
+          if (nula==TRUE){
+            return(list(dis, codif, const, codif))
+          } else {
+            return(list(dis, codif, NULL, codif))
+          }
+        } #end of the new creation function
+        
+        
+        niveles <- values$niveles
+        nula <- values$nula
+        a <- values$a
+        s <- values$s
+        ndes <- creator2(niveles, nula, a, s, priors)
+        ndes <- ndes[[1]]$design
+        values$des <- ndes
+        values$priors <- priors
+        shinyjs::click("OK")
+      }}
+      
+       if(is.null(values$serial)){
+         shinyjs::click("OK")
+       }
+      
     })
 
-    output$priors = renderText({
-      values$priors
-    })
+    # # create the next sequential design #
+    # observeEvent(input$nextseq,{
+    #   x <- nrow(values$alldes)/values$a
+    #   gid <- rep(1:x, each=values$a)
+    #   alt <- rep(c(1:values$n.alts), values$n.init)
+    #   results <- cbind(values$alldes,as.data.frame(values$surveyData[1]), as.data.frame(gid), as.data.frame(alt))
+    #   filas <- nrow(results)
+    #   pid <- rep(1:(filas/nrow(values$des)), each = nrow(values$des))
+    #   results <- cbind(results, pid)
+    #   results <- as.data.frame(results)
+    #   vars <- results[ , -((ncol(results) - 3):ncol(results))]
+    #   vars <- colnames(vars)
+    #   vars <- paste(vars, collapse ="+")
+    #   values$vars <- vars
+    #   values$results <- results
+    #   results <- values$results
+    #   model <- clogit(as.formula(paste("bin.responses~",values$vars)),strata(gid),data=results)
+    #   coef <- summary(model)$coefficients[,1]
+    #   coef <- as.data.frame((cbind(coef, summary(model)$coefficients[,4])))
+    #   coef <- cbind(coef,ifelse(abs(coef[,2]) >= 1.96,1,0))
+    #   coef <- cbind(coef, coef[,1]*coef[,3])
+    #   priors <- coef[,4]
+    #   # new creator function adapted for the sequential design #
+    #   creator2 <- function (niveles, nula, a, s, priors) {
+    #     x <- 0
+    #     codif <- c()
+    #     while (x<length(niveles)){
+    #       codif <- append(codif, "D")
+    #       x <- x+1
+    #     }
+    #     l <- sum(niveles)
+    #     k <- length(niveles)
+    #     if (nula==TRUE){
+    #       pr <- (l-k+1)
+    #     } else {
+    #       pr <- (l-k)
+    #     }
+    #     y <- 0
+    #     I <- diag(length(priors))
+    #     sim <- MASS::mvrnorm(n=100, mu=priors, Sigma=I)
+    #     if (nula==TRUE){
+    #       a <- a
+    #       sim <- list(sim[,1:1], sim[, 2:(length(priors))])
+    #       t <- 0
+    #       u <- a-1
+    #       const <- c()
+    #       while(t<=u){
+    #         if (t<u){
+    #           const <- append(const,0)
+    #         } else {
+    #           const <- append(const,1)
+    #         }
+    #         t <- t+1
+    #       }
+    #       dis <- CEA(lvls=niveles, coding=codif, n.alts=a, n.sets=s, alt.cte=const,
+    #                  par.draws=sim, no.choice=TRUE, best=TRUE)
+    #     }
+    #     if (nula==FALSE){
+    #       dis <- CEA(lvls=niveles, coding=codif, n.alts=a, n.sets=s,
+    #                  par.draws=sim, no.choice=FALSE, best=TRUE)
+    #     }
+    #     if (nula==TRUE){
+    #       return(list(dis, codif, const, codif))
+    #     } else {
+    #       return(list(dis, codif, NULL, codif))
+    #     }
+    #   } #end of the new creation function
+    # 
+    #   niveles <- values$niveles
+    #   nula <- values$nula
+    #   a <- values$a
+    #   s <- values$s
+    #   ndes <- creator2(niveles, nula, a, s, priors)
+    #   ndes <- ndes[[1]]$design
+    #   values$des <- ndes
+    #   values$priors <- priors
+    # })
+
+    # output$priors = renderText({
+    #   values$priors
+    # })
 
 }
 
