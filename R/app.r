@@ -19,6 +19,7 @@ requireNamespace('shinycssloaders')
 requireNamespace('shinyglide')
 requireNamespace('htmltools')
 requireNamespace('stringr')
+requireNamespace('bslib')
 
 
 
@@ -77,6 +78,8 @@ requireNamespace('stringr')
 #' @importFrom shinyglide screenOutput
 #' @importFrom stringr str_replace_all
 #' @importFrom shiny markdown
+#' @importFrom bslib bs_theme
+#' @importFrom bslib bs_themer
 
 
 
@@ -102,11 +105,12 @@ fulldes <- matrix()
 sncum <- 0
 
 #### User interface ####
-ui <- fluidPage(theme=shinytheme("flatly"),
-      navbarPage("DCE tool",
+ui <- fluidPage(theme=bs_theme(version = 4, bootswatch = "simplex"),
+      navbarPage("DCEtool",
                   tabPanel("Parameters", #Parameters input
                            sidebarLayout(
                              sidebarPanel(
+                               theme = bs_theme(),
                                h4("Attributes and levels"),
                                textInput("name", "Name of the attribute", ""),
                                numericInput("lev", "Number of levels", ""),
@@ -149,6 +153,8 @@ ui <- fluidPage(theme=shinytheme("flatly"),
                   ),
                  
                  tabPanel("Survey wizard", #instructions
+                          p("If the content is not displayed properly, resize the window. "),
+                          hr(),
                           glide(
                             screen(
                               p("In this section you can set up a static survey.
@@ -177,7 +183,7 @@ ui <- fluidPage(theme=shinytheme("flatly"),
                               id = "intro.text", 
                               rows = "8",
                               cols = "100",
-                              "### Survey title \n \n This is a markdown paragraph. \n \n  The following is an unordered list \n \n * a bullet \n \n * another \n \n[Links](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a) work;\n \n so does *emphasis*.\n \n To see more of what's possible, check out [commonmark.org/help](https://commonmark.org/help)." 
+                              "### Survey title \n \n This is a markdown paragraph. \n \n  The following is an unordered list \n \n * a bullet \n \n * another \n \n[Links](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a) work; so does *emphasis*.\n" 
                             ),
                             p('Preview:'),
                             column(12, uiOutput('markdown'))
@@ -232,33 +238,23 @@ ui <- fluidPage(theme=shinytheme("flatly"),
                           conditionalPanel(
                             condition = "input.linearpricecheck == 'TRUE'",
                             actionButton(inputId = "linearprice", label = "Price as linear", icon = icon('equals')),
-                        )),
+                          ),
+                          actionButton(inputId = "estimate", label = "Estimate a conditional logit")
+                        ),
                         mainPanel(
                           dataTableOutput('results'),
                           verbatimTextOutput('model')
                         )
                       )
                   ),
+                 
                  tabPanel("Instructions", #Instructions
                           fluidRow(column(width=2),
                                    column(
                                      p("Welcome to DCEtool, an app to create, respond and analyse DCEs",style="color:black;text-align:center"),
                                      width=8,style="background-color:papayawhip;border-radius: 10px")),
                           hr(),
-                          h4("The app"),
-                          p("This app is intended to be a complete package for creating, surveying, and analysing discrete choice experiments. Although all these functionalities are available, the app can also be used only to obtain the design of a discrete choice experiment."),
-                          h4("How does it work?"),
-                          HTML("<p>Introduce the parameters of the DCE in the 'Parameters' tab. Suppose you want to enter the first attribute in Table 1 of this <a href='https://doi.org/10.1016/j.jval.2016.04.004'>article</a>. To do this, enter 'Efficacy' under 'Name of the attribute',
-                               '3' under 'Number of levels' and 'L1,L2,L3' under 'Levels' name'. Once you click on 'Add,' you will see the attribute appear on the right table. Try including more attributes. Once you have more then two attributes, enter the number of alternatives per choice
-                               set, the number of choice sets per respondent, choose if you want a null choice, and click on 'Save inputs'.</p>"),
-                          HTML("<p>Once the inputs are saved, you can go to 'Design matrix' and click on 'Print the design matrix'. This procedure could take some seconds/minutes, depending on the design size and the computer's hardware.  The design that will be printed is a pilot design,
-                               a D-efficient design estimated with the <a href='http://dx.doi.org/10.18637/jss.v096.i03'>-idefix-</a> package (Traets et al. 2020) with priors coefficients equal to zero. If the DCE is to be implemented outside the app, the design can be downloaded by clicking on the 'Download' button. The output is using 'Dummy coding',
-                               and the attributes and levels codification can be interpreted as in Table 3 of this <a href='https://www.researchgate.net/publication/344360005_A_step-by-step_guide_to_design_implement_and_analyze_a_discrete_choice_experiment'>paper</a>. To implement the DCE in the app, you will need to give a name to the alternatives, an intro text, and an end text. Then you can proceed by clicking on the 'Create the survey' button.</p>"),
-                          HTML("<p>In the next tab, 'Survey', a respondent can respond to the DCE by clicking on 'OK'. Once all the choice sets are completed, the end text will appear, and a new survey can be responded by clicking on 'OK'. If the researcher wants to use a sequential design, see
-                               the original proposal by <a href='https://doi.org/10.1108/9781849507738-006'>Bliemer and Rose (2010)</a>, she can click on 'Next sequential design', and the information of the recorded responses will be used for increasing the efficiency of the design. Once the new priors appear under
-                               the survey, a new respondent can complete the survey by clicking on 'OK'. If all priors are equal to zero, the model coefficients are not significant at 5% yet (probably due to a small number of responses). Adding more responses should lead to significant coefficients. Every time a survey is finished, you can move to the 'Results' tab. </p>"),
-                          HTML("<p>In the 'Results' tab, you can download the data set, which is already coded to estimate a conditional logit model, or you can estimate the conditional logit model directly by clicking on 'Estimate a clogit'.</p>"),
-                          hr(),
+                          HTML('<p align="center"><iframe width="840" height="472.5" src="https://www.youtube.com/embed/PmngsAHCOIY" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></p>'),
                           h4("About"),
                           HTML("<p>This app was built on top of the <a href='http://dx.doi.org/10.18637/jss.v096.i03'>-idefix-</a> package by Traets et al. (2020) to simplify the task of creating DCEs and feasibly implement <a href='https://doi.org/10.1108/9781849507738-006'>Bliemer and Rose's sequential design approach</a>. </p>"),
                           hr(),
@@ -286,6 +282,7 @@ server = function(input, output) {
   values <- reactiveValues()
   values$df <- data
   
+  bs_themer()
 
   # Table input for attributes and levels #
   observeEvent(input$add.button,{
@@ -355,7 +352,7 @@ server = function(input, output) {
   
   output$check_screen <- renderUI({
     if(!input$serial) return(NULL)
-    numericInput("serialno", "Start serial strategy X responses:", "20")
+    numericInput("serialno", "Start serial strategy after X responses:", "20")
   })
   
   observeEvent(input$serialno,{
@@ -507,7 +504,7 @@ server = function(input, output) {
     while (x < y){
       s <- x+a-1
       current <- design[x:s,]
-      csname <- paste("Choice set", z)
+      print(paste("Choice set", z))
       current <- t(current)
       b <- 1
       altnames <- c()
@@ -522,7 +519,6 @@ server = function(input, output) {
       x <- x+a
       z <- z+1
     }
-    # values$decoded[1]
   })
 
   # Download button #
@@ -588,11 +584,18 @@ server = function(input, output) {
     rowcol <- Rcnames(n.sets = n.init, n.alts = n.alts, alt.cte = alt.cte, no.choice = FALSE)
     rownames(des) <- rowcol[[1]]
     fulldes <- des
+    
     if(sn==0){
     shinyjs::hide("nextbutton")
     }
   })
 
+  
+    observeEvent(input$survey, {
+      shinyjs::click("OK")
+    })
+   
+    
     # When the OK button is clicked #
     observeEvent(input$OK, {
       values$bnum <- values$bnum+1
@@ -611,7 +614,7 @@ server = function(input, output) {
       values$sn <- sn
       }
       sn <<- sn + 1
-      values$sn <- values$sn + 1
+      values$sn <<- values$sn + 1
       n.total <- values$s
       choice.sets <- values$choice.sets
       bs <- seq(1, (nrow(des) - n.alts + 1), n.alts)
@@ -646,7 +649,7 @@ server = function(input, output) {
       }
       if (sn > 1 && sn <= (n.total + 1)) {
         resp  <<- c(resp, input$survey) # Store responses and design
-
+        
         # function from the idefix package #
         Charbin <- function (resp, alts, n.alts, no.choice = FALSE) {
           map <- match(resp, alts)
@@ -664,6 +667,7 @@ server = function(input, output) {
         }
 
       y.bin <<- Charbin(resp = resp, alts = alts, n.alts = n.alts)
+      cat(y.bin)
       sdata[["bin.responses"]] <- y.bin
       sdata[["responses"]] <- resp
       sdata[["desing"]] <- fulldes
@@ -689,6 +693,7 @@ server = function(input, output) {
     alts <- unlist(values$altnames)
     buttons.text <- "Select your preferred option"
     if (values$sn >= 1 && values$sn <= n.total) {
+      
       return(list(radioButtons("survey", buttons.text, alts , inline = TRUE, selected = "None", width = "100%")))
     }
     })
@@ -711,10 +716,12 @@ server = function(input, output) {
        n.total <- values$s
        if (sn!=0){
        output$intro.text <- renderUI(NULL)
+       shinyjs::hide("OK")
        } 
        if (sn > n.total+1){
          sn <<- 0 
          output$intro.text <- renderUI(markdown(input$intro.text, .noWS = TRUE))
+         shinyjs::show("OK")
          if(!is.null(input$serial)){
          }
        }
@@ -723,17 +730,18 @@ server = function(input, output) {
     # End of the survey #
     observeEvent(input$OK, {
     n.total <- values$s
-    if (values$sn > n.total && values$sn!=n.total+2) { # Display end text
+    vsn <- values$sn
+    cat("\n Values sn: ", vsn, "\n n.total: ", n.total, "\n sn: ", sn, "\n")
+    if (vsn > n.total && vsn!=n.total+2) { # Display end text
         values$alldes <- rbind(values$alldes, values$des)
         output$end <- renderUI(markdown(input$end.text, .noWS = TRUE))
+        shinyjs::show("nextbutton")
         if(!is.null(input$serial)){
-         shinyjs::show("nextbutton")
          shinyjs::hide("OK")
         }
     } else {
         output$end <- renderUI(NULL)
         shinyjs::hide("nextbutton")
-        shinyjs::show("OK")
     }
 
     })
@@ -742,19 +750,24 @@ server = function(input, output) {
 
     # Show the results #
     output$results = renderDataTable({
+      savedData <- data.frame()
       x <- nrow(values$alldes)/values$a
       gid <- rep(1:x, each=values$a)
+      cat("gid: ", gid, "\n")
       alt <- rep(c(1:values$n.alts), values$n.init)
+      cat("alt: ", alt, "\n")
       results <- cbind(values$alldes,as.data.frame(values$surveyData[1]), as.data.frame(gid), as.data.frame(alt))
+      print(results)
       filas <- nrow(results)
       pid <- rep(1:(filas/nrow(values$des)), each = nrow(values$des))
+      cat("pid: ", gid, "\n")
       results <- cbind(results, pid)
+      print(results)
       results <- as.data.frame(results)
       vars <- results[ , -((ncol(results) - 3):ncol(results))]
       vars <- colnames(vars)
       vars <- paste(vars, collapse ="+")
       values$vars <- vars
-    
       tablex <- values$tablex
       d <- nrow(tablex)
       i <- 1
@@ -773,6 +786,7 @@ server = function(input, output) {
       titles <- append(titles, c("bin.responses", "gid", "alt", "pid"))
       colnames(results) <- titles 
       values$titles <- titles
+      savedData <<- results
       values$results <- results
     })
 
@@ -846,7 +860,7 @@ server = function(input, output) {
         values$vars <- vars
         values$results <- results
         results <- values$results
-        model <- clogit(as.formula(paste("bin.responses~",values$vars)),strata(gid),data=results)
+        model <- clogit(as.formula(paste("bin.responses~",values$vars,"+strata(gid)")),data=results, method="efron")
         coef <- summary(model)$coefficients[,1]
         coef <- as.data.frame((cbind(coef, summary(model)$coefficients[,4])))
         coef <- cbind(coef,ifelse(abs(coef[,2]) >= 1.96,1,0))
@@ -917,88 +931,6 @@ server = function(input, output) {
        }
       
     })
-
-    # # create the next sequential design #
-    # observeEvent(input$nextseq,{
-    #   x <- nrow(values$alldes)/values$a
-    #   gid <- rep(1:x, each=values$a)
-    #   alt <- rep(c(1:values$n.alts), values$n.init)
-    #   results <- cbind(values$alldes,as.data.frame(values$surveyData[1]), as.data.frame(gid), as.data.frame(alt))
-    #   filas <- nrow(results)
-    #   pid <- rep(1:(filas/nrow(values$des)), each = nrow(values$des))
-    #   results <- cbind(results, pid)
-    #   results <- as.data.frame(results)
-    #   vars <- results[ , -((ncol(results) - 3):ncol(results))]
-    #   vars <- colnames(vars)
-    #   vars <- paste(vars, collapse ="+")
-    #   values$vars <- vars
-    #   values$results <- results
-    #   results <- values$results
-    #   model <- clogit(as.formula(paste("bin.responses~",values$vars)),strata(gid),data=results)
-    #   coef <- summary(model)$coefficients[,1]
-    #   coef <- as.data.frame((cbind(coef, summary(model)$coefficients[,4])))
-    #   coef <- cbind(coef,ifelse(abs(coef[,2]) >= 1.96,1,0))
-    #   coef <- cbind(coef, coef[,1]*coef[,3])
-    #   priors <- coef[,4]
-    #   # new creator function adapted for the sequential design #
-    #   creator2 <- function (niveles, nula, a, s, priors) {
-    #     x <- 0
-    #     codif <- c()
-    #     while (x<length(niveles)){
-    #       codif <- append(codif, "D")
-    #       x <- x+1
-    #     }
-    #     l <- sum(niveles)
-    #     k <- length(niveles)
-    #     if (nula==TRUE){
-    #       pr <- (l-k+1)
-    #     } else {
-    #       pr <- (l-k)
-    #     }
-    #     y <- 0
-    #     I <- diag(length(priors))
-    #     sim <- MASS::mvrnorm(n=100, mu=priors, Sigma=I)
-    #     if (nula==TRUE){
-    #       a <- a
-    #       sim <- list(sim[,1:1], sim[, 2:(length(priors))])
-    #       t <- 0
-    #       u <- a-1
-    #       const <- c()
-    #       while(t<=u){
-    #         if (t<u){
-    #           const <- append(const,0)
-    #         } else {
-    #           const <- append(const,1)
-    #         }
-    #         t <- t+1
-    #       }
-    #       dis <- CEA(lvls=niveles, coding=codif, n.alts=a, n.sets=s, alt.cte=const,
-    #                  par.draws=sim, no.choice=TRUE, best=TRUE)
-    #     }
-    #     if (nula==FALSE){
-    #       dis <- CEA(lvls=niveles, coding=codif, n.alts=a, n.sets=s,
-    #                  par.draws=sim, no.choice=FALSE, best=TRUE)
-    #     }
-    #     if (nula==TRUE){
-    #       return(list(dis, codif, const, codif))
-    #     } else {
-    #       return(list(dis, codif, NULL, codif))
-    #     }
-    #   } #end of the new creation function
-    # 
-    #   niveles <- values$niveles
-    #   nula <- values$nula
-    #   a <- values$a
-    #   s <- values$s
-    #   ndes <- creator2(niveles, nula, a, s, priors)
-    #   ndes <- ndes[[1]]$design
-    #   values$des <- ndes
-    #   values$priors <- priors
-    # })
-
-    # output$priors = renderText({
-    #   values$priors
-    # })
 
 }
 

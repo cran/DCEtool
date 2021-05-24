@@ -3,6 +3,8 @@
 export(DCEtool)
 importFrom(DT,dataTableOutput)
 importFrom(DT,renderDataTable)
+importFrom(bslib,bs_theme)
+importFrom(bslib,bs_themer)
 importFrom(idefix,CEA)
 importFrom(idefix,Decode)
 importFrom(shiny,HTML)
