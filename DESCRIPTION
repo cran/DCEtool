@@ -1,6 +1,6 @@
 Package: DCEtool
 Title: Create, Survey and Analyse Discrete Choice Experiments
-Version: 0.2.3
+Version: 0.3.1
 Authors@R: 
     person(given = "Daniel",
            family = "Perez Troncoso",
@@ -13,13 +13,13 @@ Encoding: UTF-8
 RoxygenNote: 7.1.1
 Imports: DT, shiny, shinythemes, survival, idefix, writexl, shinyjs,
         MASS, stats, shinyhelper, shinycssloaders, shinyglide,
-        htmltools, stringr, commonmark, bslib
-Suggests: knitr, rmarkdown
-VignetteBuilder: knitr
+        htmltools, stringr, commonmark, bslib, mlogit, readxl
+Suggests: rmarkdown, R.rsp
+VignetteBuilder: R.rsp
 NeedsCompilation: no
-Packaged: 2021-05-24 07:17:39 UTC; danie
+Packaged: 2021-07-20 07:30:22 UTC; danie
 Author: Daniel Perez Troncoso [aut, cre]
     (<https://orcid.org/0000-0003-0091-8148>)
 Maintainer: Daniel Perez Troncoso <danielperez@ugr.es>
 Repository: CRAN
-Date/Publication: 2021-05-24 15:20:03 UTC
+Date/Publication: 2021-07-20 08:10:04 UTC
