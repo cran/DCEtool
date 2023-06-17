@@ -24,12 +24,9 @@
 }
 
 \examples{
-  dce_toolbox(c(2,2), 4, 2, 
-  FALSE, c(0,0), "fedorov")
-  
-  dce_toolbox(c(2,2), 4, 2,
-  FALSE, mvtnorm::rmvnorm(100,
-                        c(0,0),
-                        diag(length(c(0,0))))
-      , "cea")
+\dontrun{
+  dce_toolbox(attributes = c(2,3), csets = 12,
+                              alts = 2, nochoice = FALSE,
+                              priors = c(0,0,0), alg = "fedorov")
+}
 }

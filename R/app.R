@@ -4,7 +4,6 @@ DCEtool <- function(){
 
   requireNamespace('shiny')
   requireNamespace('rlist')
-  requireNamespace('shinythemes')
   requireNamespace('shinyWidgets')
   requireNamespace('mvtnorm')
   requireNamespace('DT')
@@ -18,10 +17,9 @@ DCEtool <- function(){
   requireNamespace('tidyr')
   requireNamespace('mlogit')
   requireNamespace('ggplot2')
-  requireNamespace('bslib')
   requireNamespace('dfidx')
   requireNamespace('remotes')
-  
+
 #' @importFrom shinyBS bsModal
 #' @importFrom graphics barplot
 #' @importFron usethis use_pipe
@@ -42,7 +40,6 @@ DCEtool <- function(){
 #' @importFrom remotes install_github
 #' @importFrom shinycssloaders withSpinner
 
-  
   #external variables
   savechoices <- c()
   resultados <- c()
@@ -60,8 +57,13 @@ DCEtool <- function(){
                  align = "center",
                  htmltools::img(src = "assets/granada.png", width = "50%"),  # prefix + filename
                  htmltools::p("Welcome to DCEtool. ",style="text-align:justify;color:black;background-color:LightGrey;padding:15px;border-radius:10px"),
-                 shiny::HTML("<p>Find more <a href = 'https://danielpereztr.github.io/DCEtool/'>here</a>.</p>"),
-                 shiny::HTML("<p>Please cite as P&eacute;rez-Troncoso (2022). Efficient and Accessible Discrete Choice Experiments: DCEtool (Version 1.0.0). danielpereztr.github.io/DCEtool</p>")
+                 shiny::fluidRow(
+                   shiny::column(2, offset = 4, actionButton("create_new_dce", "Create a new DCE")),
+                   shiny::column(2, actionButton("load_data", "Load your data"))
+                 ),
+                 htmltools::p(),
+                 shiny::HTML("<p>Find more <a href = 'https://danielpereztr.github.io/posts/DCEtool/'>here</a>.</p>"),
+                 shiny::HTML("<p>Please cite as P&eacute;rez-Troncoso (2022). Efficient and Accessible Discrete Choice Experiments: DCEtool (Version 1.1.0). <a href = 'https://danielpereztr.github.io/posts/DCEtool'>danielpereztr.github.io/posts/DCEtool</a></p>")
                )
              )
              ), #Home tab
@@ -106,13 +108,20 @@ DCEtool <- function(){
           shiny::uiOutput("atnames"),
           htmltools::br(),
           shiny::uiOutput('levdropdown'),
-          shiny::uiOutput('levtext')
+          shiny::uiOutput('levtext'),
+          htmltools::hr(),
+          shiny::actionButton("decode", "Decode the design matrix")
         ),
         shiny::mainPanel(    # Design matrix main panel
           shiny::uiOutput("spinner"),
           shiny::verbatimTextOutput("desdetails"),
           shiny::verbatimTextOutput("printlevnames"),
-          shiny::uiOutput('modmatrix')
+          shiny::uiOutput('modmatrix'),
+          shinyBS::bsModal("modaldecode", "", "decode", size = "large",
+                           shiny::fluidRow(
+                             shiny::verbatimTextOutput("decoded")
+                           )
+          )
         )
       )
     ),
@@ -223,7 +232,7 @@ DCEtool <- function(){
                  shiny::column(12,
                         align = "Left",
                         htmltools::h3("About"),
-                        shiny::HTML("<p>This app was created by Daniel P&eacute;rez-Troncoso in 2021. Version 1.0.0 was released in April 2022.</p>"),
+                        shiny::HTML("<p>This app was created by Daniel P&eacute;rez-Troncoso in 2021. Version 1.1.0 was released in April 2022.</p>"),
                         shiny::HTML("<p>Please, if you use this app in your research, reference it as 'P&eacute;rez-Troncoso, D. (2022). DCEtool (1.0.0) [Software]. https://cran.r-project.org/package=DCEtool ' </p>"),
                         shiny::HTML("<p>Find a guide in <a href = 'https://danielpereztr.github.io/posts/DCEtool/'>this link</a></p>"),
                         htmltools::h3("Downloads"),
@@ -248,6 +257,8 @@ DCEtool <- function(){
       }
     })
     
+    
+    
     #Close shiny 
     session$onSessionEnded(function() {
       shiny::stopApp()
@@ -256,6 +267,14 @@ DCEtool <- function(){
     #change tab
     shiny::observeEvent(input$create_DCE, {
       shiny::updateTabsetPanel(session, 'inTabset', selected = "params")
+    })
+    
+    shiny::observeEvent(input$create_new_dce, {
+      shiny::updateNavbarPage(session, "inTabset", selected = "params")
+    })
+    
+    shiny::observeEvent(input$load_data, {
+      shiny::updateNavbarPage(session, "inTabset", selected = "desmattab")
     })
     
     # Values across functions
@@ -433,12 +452,11 @@ DCEtool <- function(){
           values$bpriors <- values$priors
         }
         
-        
         # Generate
         design <- dce_toolbox(attributes = values$levels, csets = values$sets,
                               alts = values$alts, nochoice = values$optout,
                               priors = values$bpriors, alg = alg)
-        
+        design <<- design
         values$design <- design$design
         values$`D-error` <- design$`D-error`
         values$details <- design$details
@@ -555,6 +573,8 @@ DCEtool <- function(){
             values$levnames
           })
           
+          
+          
         # If all levels have a name, option to paste in the design matrix
           if (length(values$levnames) == length(values$levels)){
             output$modmatrix <- shiny::renderUI({
@@ -568,6 +588,7 @@ DCEtool <- function(){
       
     })
     
+    
     #Put names in the design matrix
     shiny::observeEvent(input$modmatbut, {
       levvector <- c()
@@ -579,9 +600,7 @@ DCEtool <- function(){
       } else {
       namvect <- append(c("task","alt", "optout"), unlist(lapply(levvector, function(x) x[-1])))  
       }
-      print(namvect)
       colnames(values$design) <- namvect
-      
       #Print the table
       output$design <- DT::renderDT({
         values$design <- as.data.frame(values$design)
@@ -589,7 +608,7 @@ DCEtool <- function(){
       
     })
     
-  
+
     # Save design and other design info (if design changes)
     shiny::observeEvent(values$design, {
       deslist <- list("design" = as.data.frame(values$design), # Save in a list to download in the excel
@@ -646,6 +665,36 @@ DCEtool <- function(){
       
     })
     
+    #Decoding
+    shiny::observeEvent(input$decode, {
+      dec <- function(x){
+        coding <- c()
+        for (i in seq_len(values$nats)){
+          coding <- append(coding, "D")
+        }
+        decodes <- idefix::Decode(as.matrix(values$design[,3:ncol(values$design)]), values$ncalts, values$levnames2,
+                                  coding = coding, no.choice = values$no.choice, alt.cte = values$nullvect)
+        decodes <- decodes$design
+        decodes <- cbind("set" = rep(1:values$sets, each = values$ncalts), decodes)
+        decodes <- decodes[decodes$set == x,]
+        decodes <- decodes[,2:ncol(decodes)]
+        decodes <- t(decodes)
+        decodes <- as.data.frame(decodes)
+        decodes <- cbind(values$atnames,decodes)
+        row.names(decodes) <- NULL
+        colnames(decodes) <- c("", 1:(ncol(decodes)-1))
+        print(paste("Choice set", x))
+        print(decodes)
+      }
+      output$decoded <- shiny::renderPrint({
+          for (i in 1:values$sets){
+            dec(i)
+          }
+      })
+
+      
+    })
+    
     
     # survey creator
     output$labels <- shiny::renderUI({
@@ -696,7 +745,6 @@ DCEtool <- function(){
         }
         levnames2 <- values$levnames2
         values$coding <- coding
-        print(coding)
         decodes <- idefix::Decode(as.matrix(values$design[,3:ncol(values$design)]), values$ncalts, values$levnames2,
                           coding = coding, no.choice = values$no.choice, alt.cte = values$nullvect)
         decodes <- decodes$design
