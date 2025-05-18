@@ -22,7 +22,7 @@ DCEtool <- function(){
 
 #' @importFrom shinyBS bsModal
 #' @importFrom graphics barplot
-#' @importFron usethis use_pipe
+#' @importFrom usethis use_pipe
 #' @importFrom magrittr %>%
 #' @importFrom survival strata
 #' @importFrom survival coxph
@@ -55,7 +55,7 @@ DCEtool <- function(){
              shiny::fluidRow(
                shiny::column(12,
                  align = "center",
-                 htmltools::img(src = "assets/granada.png", width = "50%"),  # prefix + filename
+                 htmltools::img(src = "assets/logo.png", width = "50%"),  # prefix + filename
                  htmltools::p("Welcome to DCEtool. ",style="text-align:justify;color:black;background-color:LightGrey;padding:15px;border-radius:10px"),
                  shiny::fluidRow(
                    shiny::column(2, offset = 4, actionButton("create_new_dce", "Create a new DCE")),
@@ -63,7 +63,7 @@ DCEtool <- function(){
                  ),
                  htmltools::p(),
                  shiny::HTML("<p>Find more <a href = 'https://danielpereztr.github.io/posts/DCEtool/'>here</a>.</p>"),
-                 shiny::HTML("<p>Please cite as P&eacute;rez-Troncoso (2022). Efficient and Accessible Discrete Choice Experiments: DCEtool (Version 1.1.0). <a href = 'https://danielpereztr.github.io/posts/DCEtool'>danielpereztr.github.io/posts/DCEtool</a></p>")
+                 shiny::HTML("<p>Please cite as P&eacute;rez-Troncoso (2022). Efficient and Accessible Discrete Choice Experiments: DCEtool (Version 1.1.1). <a href = 'https://danielpereztr.github.io/posts/DCEtool'>danielpereztr.github.io/posts/DCEtool</a></p>")
                )
              )
              ), #Home tab
@@ -232,7 +232,7 @@ DCEtool <- function(){
                  shiny::column(12,
                         align = "Left",
                         htmltools::h3("About"),
-                        shiny::HTML("<p>This app was created by Daniel P&eacute;rez-Troncoso in 2021. Version 1.1.0 was released in April 2022.</p>"),
+                        shiny::HTML("<p>This app was created by Daniel P&eacute;rez-Troncoso in 2022. Version 1.1.1 was released in May 2025.</p>"),
                         shiny::HTML("<p>Please, if you use this app in your research, reference it as 'P&eacute;rez-Troncoso, D. (2022). DCEtool (1.0.0) [Software]. https://cran.r-project.org/package=DCEtool ' </p>"),
                         shiny::HTML("<p>Find a guide in <a href = 'https://danielpereztr.github.io/posts/DCEtool/'>this link</a></p>"),
                         htmltools::h3("Downloads"),

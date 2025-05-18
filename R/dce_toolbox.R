@@ -126,7 +126,7 @@ requireNamespace("idefix")
 #     }
 #     aa <- allalts[,3:ncol(allalts)]
 #     for (it in 1:10){ ### Iterations
-#       for (a in 1:nrow(temp_mat)){ ### Alternatives in the design
+#       for (a in 1:nrow(temp_mat){ ### Alternatives in the design
 #         if (temp_mat$alt[a] == (alts+1)){
 #           next
 #         } else{
@@ -161,9 +161,9 @@ requireNamespace("idefix")
 #     min <- c()
 #     it_d <- c()
 #     for (it in 1:10){
-#       for (row in 1:nrow(randomdce)){ #Loop for rows
+#       for (row in 1:nrow(randomdce){ #Loop for rows
 #         if (nochoice == FALSE | (nochoice == TRUE && row %% alt)){
-#           for (at in 1:(ncol(randomdce)-1)){ #attribute
+#           for (at in 1:(ncol(randomdce)-1){ #attribute
 #             for (lev in 1:attributes[at]){
 #               randomdce[row, at+1] <- lev
 #               temp_mat <- dummify(randomdce, alts)
@@ -199,7 +199,7 @@ requireNamespace("idefix")
 #       temp_mat$alt <- rep(1:(alts+1), times = csets)
 #     }
 # 
-#     results <- list("design" = temp_mat, "DB-error" = Derror, "details" = "Coordinate exchange algorithm used to generate an efficient Bayesian design")
+#     results <- list("design" = temp_mat, "DB-error" = Derror, "details" => "Coordinate exchange algorithm used to generate an efficient Bayesian design")
 # 
 #     return(results)
 #   }
@@ -226,116 +226,111 @@ requireNamespace("idefix")
 ##### New design based on idefix
 #' @export
 dce_toolbox <- function(attributes, csets, alts, nochoice, priors, alg){
-  
-  if (alg == "fedorov"){
-    if (nochoice == TRUE){
-      coding <- rep("D", length(attributes))
-    } else if (nochoice == FALSE){
-      coding <- rep("D", length(attributes))
-    }
-    cand.set <- idefix::Profiles(attributes, coding)
-    if (nochoice == TRUE){
-      alts <- alts+1
-      alt.cte <- c(rep(0, alts-1), 1)
-      v <- diag(length(priors))
-      mu <- priors
-      priors1 <- MASS::mvrnorm(n = 100, mu = mu, Sigma = v)
-      priors <- list(matrix(priors1[,1], ncol = 1), priors1[,2:ncol(priors1)])
-      no.choice = TRUE
-    } else {
-      alts <- alts
-      alt.cte <- NULL
-      no.choice = FALSE
-    }
+  # Adaptación para idefix >= 1.1.0
+  # - El diseño y el error están en $BestDesign
+  # - alt.cte debe ser vector binario si hay opt-out
+  # - priors debe ser lista si hay opt-out
+  # - no.choice debe ser TRUE si hay opt-out
+  # - El diseño se extrae de $BestDesign$design
 
-    
-    gendes <- idefix::Modfed(cand.set, csets, alts, priors, alt.cte, no.choice = no.choice)
-    print(gendes)
-    design <- gendes$design
-    
-    # Extraer los nombres de las filas
-    row_names <- rownames(design)
-    
-    # Crear las nuevas columnas basadas en los nombres de las filas
-    task <- as.integer(sub("set(\\d+).*", "\\1", row_names))
-    alts <- as.integer(sub(".*alt(\\d+)|no.choice", "\\1", row_names))
-    
-    # Establecer el valor de la columna 'alts' cuando es "no.choice"
-    for (i in 1:length(alts)) {
-      if (is.na(alts[i])) {
-        alts[i] <- alts[i - 1] + 1
+  coding <- rep("D", length(attributes))
+  cand.set <- idefix::Profiles(attributes, coding)
+
+  if (alg == "fedorov") {
+    if (nochoice == TRUE) {
+      alts_use <- alts + 1
+      alt.cte <- c(rep(0, alts_use - 1), 1) # Última alternativa es opt-out
+      # Si priors es vector, convertir a lista para alt.cte
+      if (!is.list(priors)) {
+        v <- diag(length(priors))
+        mu <- priors
+        priors1 <- MASS::mvrnorm(n = 100, mu = mu, Sigma = v)
+        priors <- list(matrix(priors1[,1], ncol = 1), priors1[,2:ncol(priors1)])
       }
-    }
-    
-    # Crear un dataframe temporal con las nuevas columnas
-    temp_df <- data.frame(task, alts)
-    
-    # Establecer el valor de la columna 'task' cuando es NA
-    temp_df$task[is.na(temp_df$task)] <- temp_df$task[which(is.na(temp_df$task)) - 1]
-    
-    # Agregar las nuevas columnas al dataframe
-    design <- cbind(temp_df, design)
-    
-    result <- c()
-    result$design <- design
-    result$`D-error` <- gendes$error
-    result$details <- "Fedorov modified algorithm used to generate an optimal design"
-    result
-    
-  } else if (alg == "cea"){
-    
-    if (nochoice == TRUE){
-      coding <- rep("D", length(attributes))
-    } else if (nochoice == FALSE){
-      coding <- rep("D", length(attributes))
-    }
-    
-    if (nochoice == TRUE){
-      alts <- alts+1
-      alt.cte <- c(rep(0, alts-1), 1)
-      priors <- list(matrix(priors[,1], ncol = 1), priors[,2:ncol(priors)])
-      no.choice = TRUE
-    } else if (nochoice == FALSE){
+      no.choice <- TRUE
+    } else {
+      alts_use <- alts
       alt.cte <- NULL
-      no.choice = FALSE
+      no.choice <- FALSE
     }
-    
-    gendes <- idefix::CEA(attributes, coding, NULL, csets, alts, priors, alt.cte, no.choice = no.choice)
-    design <- gendes$design
-    
-    # Extraer los nombres de las filas
+    # Llamada a Modfed (idefix >= 1.1.0)
+    gendes <- idefix::Modfed(
+      cand.set = cand.set,
+      n.sets = csets,
+      n.alts = alts_use,
+      par.draws = priors,
+      alt.cte = alt.cte,
+      no.choice = no.choice
+    )
+    # Extraer diseño y error de $BestDesign
+    design <- gendes$BestDesign$design
+    d_error <- if (!is.null(gendes$BestDesign$DB.error)) gendes$BestDesign$DB.error else gendes$BestDesign$D.error
+    # Añadir columnas task y alt
     row_names <- rownames(design)
-    
-    # Crear las nuevas columnas basadas en los nombres de las filas
     task <- as.integer(sub("set(\\d+).*", "\\1", row_names))
-    alts <- as.integer(sub(".*alt(\\d+)|no.choice", "\\1", row_names))
-    
-    # Establecer el valor de la columna 'alts' cuando es "no.choice"
-    for (i in 1:length(alts)) {
-      if (is.na(alts[i])) {
-        alts[i] <- alts[i - 1] + 1
+    alt_col <- as.integer(sub(".*alt(\\d+)|no.choice", "\\1", row_names))
+    for (i in seq_along(alt_col)) {
+      if (is.na(alt_col[i])) {
+        alt_col[i] <- alt_col[i - 1] + 1
       }
     }
-    
-    # Crear un dataframe temporal con las nuevas columnas
-    temp_df <- data.frame(task, alts)
-    
-    # Establecer el valor de la columna 'tasts' cuando es NA
+    temp_df <- data.frame(task, alt = alt_col)
     temp_df$task[is.na(temp_df$task)] <- temp_df$task[which(is.na(temp_df$task)) - 1]
-    
-    # Agregar las nuevas columnas al dataframe
     design <- cbind(temp_df, design)
-    
-    
-    result <- c()
-    result$design <- design
-    result$`D-error` <- gendes$error
-    result$details <- "Coordinate exchange algorithm used to generate an efficient Bayesian design"
-    result
+    result <- list(
+      design = design,
+      `D-error` = d_error,
+      details = "Fedorov modified algorithm used to generate an optimal design (idefix >= 1.1.0)"
+    )
+    return(result)
+  } else if (alg == "cea") {
+    if (nochoice == TRUE) {
+      alts_use <- alts + 1
+      alt.cte <- c(rep(0, alts_use - 1), 1)
+      # Si priors es matriz, convertir a lista
+      if (!is.list(priors)) {
+        priors <- list(matrix(priors[,1], ncol = 1), priors[,2:ncol(priors)])
+      }
+      no.choice <- TRUE
+    } else {
+      alts_use <- alts
+      alt.cte <- NULL
+      no.choice <- FALSE
+    }
+    gendes <- idefix::CEA(
+      lvls = attributes,
+      coding = coding,
+      c.lvls = NULL,
+      n.sets = csets,
+      n.alts = alts_use,
+      par.draws = priors,
+      alt.cte = alt.cte,
+      no.choice = no.choice
+    )
+    design <- gendes$BestDesign$design
+    d_error <- if (!is.null(gendes$BestDesign$DB.error)) gendes$BestDesign$DB.error else gendes$BestDesign$D.error
+    row_names <- rownames(design)
+    task <- as.integer(sub("set(\\d+).*", "\\1", row_names))
+    alt_col <- as.integer(sub(".*alt(\\d+)|no.choice", "\\1", row_names))
+    for (i in seq_along(alt_col)) {
+      if (is.na(alt_col[i])) {
+        alt_col[i] <- alt_col[i - 1] + 1
+      }
+    }
+    temp_df <- data.frame(task, alt = alt_col)
+    temp_df$task[is.na(temp_df$task)] <- temp_df$task[which(is.na(temp_df$task)) - 1]
+    design <- cbind(temp_df, design)
+    result <- list(
+      design = design,
+      `D-error` = d_error,
+      details = "Coordinate exchange algorithm used to generate an efficient Bayesian design (idefix >= 1.1.0)"
+    )
+    return(result)
+  } else {
+    stop("The 'alg' argument must be either 'fedorov' or 'cea'.")
   }
-  
 }
 
 
 
-  
+
