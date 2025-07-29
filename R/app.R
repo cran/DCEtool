@@ -259,6 +259,7 @@ DCEtool <- function(){
             shiny::uiOutput('modmatrix'),
             hr(),
             shiny::verbatimTextOutput("decoded_main"),
+            shiny::uiOutput("after_decoded"),
             shinyBS::bsModal("modaldecode", "", "decode", size = "large",
                              shiny::fluidRow(
                                shiny::verbatimTextOutput("decoded")
@@ -1119,12 +1120,6 @@ DCEtool <- function(){
         print(decodes)
       }
       
-      # Render en el modal
-      output$decoded <- shiny::renderPrint({
-        for (i in 1:values$sets){
-          dec(i)
-        }
-      })
       
       # Render en el mainPanel
       output$decoded_main <- shiny::renderPrint({
@@ -1132,6 +1127,31 @@ DCEtool <- function(){
           dec(i)
         }
       })
+      
+      output$after_decoded <- shiny::renderUI({
+        tags$div(
+          style = "margin-top: 2em; text-align: center;",
+          tags$p(
+            style = "font-size: 1.15em; margin-bottom: 1.2em;",
+            "From this point, you can save this design and create your own DCE in an external online survey platform. For a quick and easy way to generate and customize your choice sets, try ",
+            tags$a(
+              href = "https://cognitur.net/playground/csmaker.html",
+              target = "_blank",
+              "ChoiceSetMaker by Cognitur",
+              style = "font-weight: bold; color: #4F46E5; text-decoration: underline;"
+            ),
+            "."
+          ),
+          tags$a(
+            href = "https://cognitur.net/playground/csmaker.html",
+            target = "_blank",
+            class = "btn btn-primary btn-lg",
+            style = "background: linear-gradient(90deg, #6366F1 0%, #2563EB 100%); border: none; font-weight: 500;",
+            "Go to ChoiceSetMaker"
+          )
+        )
+      })
+      
     })
     
     

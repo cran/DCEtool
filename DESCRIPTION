@@ -1,6 +1,6 @@
 Package: DCEtool
 Title: Efficient and Accessible Discrete Choice Experiments
-Version: 1.2.0
+Version: 1.2.1
 Authors@R: 
     person(given = "Daniel",
            family = "Perez Troncoso",
@@ -14,14 +14,13 @@ RoxygenNote: 7.3.2
 Depends: survival, shinyBS, shinycssloaders
 Imports: shiny, shinyWidgets, mvtnorm, DT, writexl, readxl, idefix,
         ggplot2, magrittr, remotes, rlist, shinyhelper, usethis,
-        htmltools
-Suggests: tidyr, mlogit, knitr, dfidx, adjustedcranlogs, MASS, httr,
-        markdown, shinyjs
+        htmltools, httr, adjustedcranlogs
+Suggests: tidyr, mlogit, knitr, dfidx, MASS, markdown, shinyjs
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2025-07-21 13:00:03 UTC; danie
+Packaged: 2025-07-29 17:11:01 UTC; danie
 Author: Daniel Perez Troncoso [aut, cre] (ORCID:
     <https://orcid.org/0000-0003-0091-8148>)
 Repository: CRAN
-Date/Publication: 2025-07-21 13:31:46 UTC
+Date/Publication: 2025-07-29 17:30:02 UTC
 Maintainer: Daniel Perez Troncoso <dpereztr@gmail.com>
